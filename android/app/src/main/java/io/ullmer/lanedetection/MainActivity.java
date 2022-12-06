@@ -7,8 +7,12 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.widget.Toast;
 
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
 
@@ -18,9 +22,31 @@ public class MainActivity extends AppCompatActivity {
     private io.ullmer.lanedetection.databinding.MainActivityBinding binding;
     private Uri inputUri;
 
+    BaseLoaderCallback baseLoaderCallback= new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS: {
+                    Log.i("MainActivity", "onManagerConnected: OpenCV loaded");
+                }
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (OpenCVLoader.initDebug()){
+            // if loaded successfully
+            Log.d("MainActivity", "onResume: OpenCV initialized");
+            baseLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+        }
+        else {
+            Log.d("MainActivity", "onResume: OpenCV not initialized");
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION, this, baseLoaderCallback);
+        }
 
         binding = io.ullmer.lanedetection.databinding.MainActivityBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
