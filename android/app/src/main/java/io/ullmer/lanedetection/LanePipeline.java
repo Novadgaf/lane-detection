@@ -1,9 +1,13 @@
 package io.ullmer.lanedetection;
 
 import static org.opencv.core.CvType.CV_8UC1;
+import static org.opencv.imgproc.Imgproc.COLOR_RGB2GRAY;
 import static org.opencv.imgproc.Imgproc.COLOR_RGB2HLS;
 import static org.opencv.imgproc.Imgproc.COLOR_RGB2Lab;
+import static org.opencv.imgproc.Imgproc.COLOR_RGB2RGBA;
+import static org.opencv.imgproc.Imgproc.THRESH_BINARY;
 
+import android.util.Log;
 import android.util.Pair;
 
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
@@ -24,6 +28,7 @@ import org.opencv.core.TermCriteria;
 import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -52,29 +57,28 @@ public class LanePipeline {
         //Mat undistorted = undistort(originalImage);
         Mat warped = warp(originalImage);
 
-        return warped;
-//        Mat filtered = filter(warped);
-//
-//        Pair<WeightedObservedPoints, WeightedObservedPoints> lanePoints = findLanePoints(filtered);
-//        double[] leftCoefficients = fitPolynomial(lanePoints.first);
-//        double[] rightCoefficients = fitPolynomial(lanePoints.second);
-//
-//        Mat lanes = drawLanes(filtered.height(), filtered.width(), leftCoefficients, rightCoefficients);
-//        Mat unwarped = unwarp(lanes);
-//
-//        Mat combined = overlay(originalImage, unwarped);
-//        double krum = getKruemmung(leftCoefficients, rightCoefficients);
-//
-//        Mat finalImage = new Mat();
-//        Imgproc.putText(combined,
-//                "Radius: "+ krum,
-//                new Point(50, 50),
-//                Imgproc.FONT_HERSHEY_TRIPLEX,
-//                1,
-//                new Scalar(255, 255, 255));
-//
-//
-//        return finalImage;
+        Mat filtered = filter(warped);
+
+        Pair<WeightedObservedPoints, WeightedObservedPoints> lanePoints = findLanePoints(filtered);
+        double[] leftCoefficients = fitPolynomial(lanePoints.first);
+        double[] rightCoefficients = fitPolynomial(lanePoints.second);
+
+        Mat lanes = drawLanes(filtered.height(), filtered.width(), leftCoefficients, rightCoefficients);
+        //return lanes;
+        Mat unwarped = unwarp(lanes);
+
+        Imgproc.cvtColor(unwarped, unwarped, COLOR_RGB2RGBA);
+        Mat combined = overlay(originalImage, unwarped);
+        double krum = getKruemmung(leftCoefficients, rightCoefficients);
+
+        Imgproc.putText(combined,
+                "Radius: "+ krum,
+                new Point(50, 50),
+                Imgproc.FONT_HERSHEY_TRIPLEX,
+                1,
+                new Scalar(255, 255, 255));
+        
+        return combined;
     }
 
     private void calibrateCamera() {
@@ -133,7 +137,28 @@ public class LanePipeline {
     }
 
     private Mat filter(Mat input) {
-        return input;
+        Mat hls = convert2Hls(input);
+        Mat lab = convert2Lab(input);
+
+        Mat whiteRange = new Mat();
+        Mat yellowRange = new Mat();
+
+        Core.inRange(hls, new Scalar(0, 220, 0), new Scalar(255, 255, 255), whiteRange);
+        // TODO: wieso ist hier ein anderer Threshold als in Python?
+        Core.inRange(lab, new Scalar(0, 0, 150), new Scalar(255, 255, 255), yellowRange);
+        // inRange gibt ein Binary Bild zurück
+
+        Mat lines = new Mat();
+        Core.add(yellowRange, whiteRange, lines);
+
+        // reduce lines to 1px width
+        Mat kernel = new Mat(3, 3, CvType.CV_32S);
+        kernel.put(0, 0, -1, 0, 1, -1, 0, 1, -1, 0, 1);
+        Mat perwitt = new Mat();
+        Imgproc.filter2D(lines, perwitt, -1, kernel);
+        Mat output = new Mat();
+        Imgproc.threshold(perwitt, output, 0, 255, THRESH_BINARY);
+        return output;
     }
 
     private Pair<WeightedObservedPoints, WeightedObservedPoints> findLanePoints(Mat input) {
@@ -141,7 +166,7 @@ public class LanePipeline {
         final WeightedObservedPoints rightPoints = new WeightedObservedPoints();
 
         for (int i = 0; i < input.rows(); i++) {
-            for (int j = 0; j < input.cols(); i++) {
+            for (int j = 0; j < input.cols(); j++) {
                 double point = input.get(i, j)[0];
                 if (point > 0) {
                     if (j <= this.width/2) {
@@ -164,33 +189,40 @@ public class LanePipeline {
     }
 
     private Mat drawLanes(int height, int width, double[] wLeft, double[] wRight) {
-        Mat image = new Mat();
+        Mat image = new Mat(height, width, CvType.CV_8UC3);
         PolynomialFunction leftFunction = new PolynomialFunction(wLeft);
         PolynomialFunction rightFunction = new PolynomialFunction(wRight);
 
-        List<MatOfPoint> leftPoints = new ArrayList<>();
-        List<MatOfPoint> rightPoints = new ArrayList<>();
+        List<Point> leftPoints = new ArrayList<>();
+        List<Point> rightPoints = new ArrayList<>();
 
-        for (int i = 1; i <= this.height; i++ ) {
+        for (int i = 0; i < this.height; i++ ) {
             double leftY = leftFunction.value(i);
             double rightY = rightFunction.value(i);
-            leftPoints.add(new MatOfPoint(new Point(i, leftY)));
-            rightPoints.add(new MatOfPoint(new Point(i, rightY)));
+            leftPoints.add(new Point(leftY, i));
+            rightPoints.add(new Point(rightY, i));
         }
 
-        Imgproc.polylines(image, null, false, new Scalar(18, 102, 226), 15);
-        Imgproc.polylines(image, null, false, new Scalar(18, 102, 226), 15);
+        List<MatOfPoint> left = new ArrayList<>();
+        left.add(new MatOfPoint(leftPoints.toArray(new Point[0])));
+        List<MatOfPoint> right = new ArrayList<>();
+        right.add(new MatOfPoint(rightPoints.toArray(new Point[0])));
 
-        // rightPoints gets reversed and added to leftPoints. leftPoints contains now all Points
+        Imgproc.polylines(image, left, false, new Scalar(18, 102, 226), 15);
+        Imgproc.polylines(image, right, false, new Scalar(18, 102, 226), 15);
+
         Collections.reverse(rightPoints);
         leftPoints.addAll(rightPoints);
 
-        Imgproc.fillPoly(image, leftPoints, new Scalar(0, 255, 0));
+        List<MatOfPoint> allPoints = new ArrayList<>();
+        allPoints.add(new MatOfPoint(leftPoints.toArray(new Point[0])));
+
+        Imgproc.fillPoly(image, allPoints, new Scalar(0, 255, 0));
         return image;
     }
 
     private double getRadius(double[] parameters) {
-        // TODO height oder width??
+        // TODO: Unterschied Python <-> Android. Was stimmt?
         return Math.pow(1 + (2 * parameters[0] * this.height + Math.pow(parameters[1], 2)), 1.5) / Math.abs(2*parameters[0]);
     }
 
@@ -214,50 +246,15 @@ public class LanePipeline {
         return result;
     }
 
-    private Mat[] convert2Lab(Mat input) {
+    private Mat convert2Lab(Mat input) {
         Mat labImage = new Mat();
-        Imgproc.cvtColor(input, labImage, Imgproc.COLOR_BGR2Lab);
-
-        Mat l = new Mat();
-        Mat a = new Mat();
-        Mat b = new Mat();
-        Core.extractChannel(labImage, l, 0);
-        Core.extractChannel(labImage, a, 1);
-        Core.extractChannel(labImage, b, 2);
-
-        return new Mat[] { l, a, b };
+        Imgproc.cvtColor(input, labImage, Imgproc.COLOR_RGB2Lab);
+        return labImage;
     }
 
-    private Mat[] convert2Hls(Mat input) {
-        Mat hsvImage = new Mat();
-        Imgproc.cvtColor(input, hsvImage, Imgproc.COLOR_BGR2HLS);
-        // Extract the hue, saturation, and value (lightness) channels
-        Mat hue = new Mat();
-        Mat saturation = new Mat();
-        Mat lightness = new Mat();
-        Core.extractChannel(hsvImage, hue, 0);
-        Core.extractChannel(hsvImage, saturation, 1);
-        Core.extractChannel(hsvImage, lightness, 2);
-
-        return new Mat[] { hue, saturation, lightness };
-    }
-
-    private Mat normalizeHlsImage(Mat image) {
-        Mat hls_l = convert2Hls(image)[1];
-        double maxValue = Core.minMaxLoc(hls_l).maxVal;
-        Core.multiply(hls_l, new Scalar(255 / maxValue), hls_l);
-
-        Mat zeros = new Mat(hls_l.rows(), hls_l.cols(), hls_l.type());
-
-        // Create the binary mask using the thresholds
-        Mat mask = new Mat();
-        Core.inRange(hls_l, new Scalar(220), new Scalar(255), mask);
-
-        // TODO: This does not work!
-        // Apply the mask to the output array
-        // zeros.setTo(new Scalar(0), mask);
-        // zeros.setTo(new Scalar(1), mask.not());
-
-        return zeros;
+    private Mat convert2Hls(Mat input) {
+        Mat hlsImage = new Mat();
+        Imgproc.cvtColor(input, hlsImage, Imgproc.COLOR_RGB2HLS);
+        return hlsImage;
     }
 }
