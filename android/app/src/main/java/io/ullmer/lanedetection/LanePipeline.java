@@ -107,22 +107,23 @@ public class LanePipeline {
         int offset = 200;
 
         // create original points matrix
-        int[] src = { 701, 459,
+        float[] src = { 701, 459,
                       1055, 680,
                       265, 680,
                       580, 459 };
-        Mat originalMatrix = new Mat(4, 2, CvType.CV_32S );
-        originalMatrix.put(4, 2, src );
+        Mat originalMatrix = new Mat(4, 1, CvType.CV_32FC2 );
+        originalMatrix.put(0, 0, src );
 
         // create destination points matrix
-        int[] dest = { this.width - offset, 0,
+        float[] dest = { this.width - offset, 0,
                         this.width - offset, this.height,
                         offset, this.height,
                         offset, 0 };
-        Mat destinationMatrix = new Mat(4, 2, CvType.CV_32S );
-        originalMatrix.put(4, 2, dest );
+        Mat destinationMatrix = new Mat(4, 1, CvType.CV_32FC2 );
+        destinationMatrix.put(0, 0, dest );
 
         this.M = Imgproc.getPerspectiveTransform(originalMatrix, destinationMatrix);
+        originalMatrix.checkVector(2, CvType.CV_32F);
         this.Minv = Imgproc.getPerspectiveTransform(destinationMatrix, originalMatrix);
 
         // warp perspective

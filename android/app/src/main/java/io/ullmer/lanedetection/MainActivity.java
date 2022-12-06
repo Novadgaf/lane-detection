@@ -90,11 +90,13 @@ public class MainActivity extends AppCompatActivity {
         Mat output = pipeline.runPipeline();
         long difference = System.currentTimeMillis() - startTime;
 
-        Bitmap outputBitmap = Bitmap.createBitmap(output.rows(), output.cols(),
+        Bitmap outputBitmap = Bitmap.createBitmap(output.width(), output.height(),
                             Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(output, outputBitmap);
 
         binding.outputImage.setImageBitmap(outputBitmap);
+
+        Log.i("PIPELINE", "Pipeline ist gelaufen in " + difference +  "ms");
 
         Toast.makeText(
                         getApplicationContext(),

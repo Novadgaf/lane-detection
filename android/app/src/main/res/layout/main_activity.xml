@@ -5,7 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    tools:context=".MainActivity">
+    tools:context=".MainActivity"
+    style="@style/Theme.LaneDetection">
 
     <ImageView
         android:id="@+id/inputImage"
@@ -16,11 +17,12 @@
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         android:background="#DF2323"
+        android:contentDescription="Input image"
         app:layout_constraintBottom_toTopOf="@+id/button_run"
-        app:layout_constraintDimensionRatio="1:1"
+        app:layout_constraintDimensionRatio="w,16:9"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/explainationText"
         tools:srcCompat="@tools:sample/backgrounds/scenic" />
 
     <Button
@@ -28,7 +30,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
         android:text="@string/run_button"
+        app:layout_constraintBottom_toTopOf="@+id/outputImage"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/inputImage" />
@@ -42,9 +46,26 @@
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         android:background="#4CAF50"
+        android:contentDescription="Output image"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintDimensionRatio="16:9"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/button_run"
         tools:srcCompat="@tools:sample/backgrounds/scenic" />
+
+    <TextView
+        android:id="@+id/explainationText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="8dp"
+        android:textColor="@color/white"
+        app:layout_constraintBottom_toTopOf="@+id/inputImage"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="@string/explaination_text" />
 </androidx.constraintlayout.widget.ConstraintLayout>
