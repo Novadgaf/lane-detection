@@ -34,6 +34,8 @@ public class BeautifulActivity extends AppCompatActivity {
     private ActivityBeautifulBinding binding;
     private Uri inputUri;
     private LanePipeline lanePipeline;
+    private String title;
+    private Bitmap outputBitmap = null;
 
     BaseLoaderCallback baseLoaderCallback= new BaseLoaderCallback(this) {
         @Override
@@ -82,6 +84,15 @@ public class BeautifulActivity extends AppCompatActivity {
             intent.setAction(Intent.ACTION_GET_CONTENT);
             startActivityForResult(Intent.createChooser(intent, "Select Picture"), 200);
         });
+
+        binding.outputImage.setOnLongClickListener(view -> {
+            if (outputBitmap == null) {
+                Toast.makeText(getApplicationContext(), "No output image to save", Toast.LENGTH_LONG).show();
+                return false;
+            }
+            shareOutput(outputBitmap);
+            return true;
+        });
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -122,6 +133,8 @@ public class BeautifulActivity extends AppCompatActivity {
                 Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(output, outputBitmap);
 
+        this.outputBitmap = outputBitmap;
+
         binding.outputImage.setImageBitmap(outputBitmap);
 
         Log.i("PIPELINE", "Pipeline ist gelaufen in " + difference +  "ms");
@@ -135,10 +148,21 @@ public class BeautifulActivity extends AppCompatActivity {
 
     private Bitmap uriToBitmap(Uri imageUri) {
         try {
+            this.title = imageUri.getLastPathSegment();
             return MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
         } catch (IOException e) {
             Toast.makeText(getApplicationContext(), "File not found", Toast.LENGTH_LONG).show();
         }
         return null;
+    }
+
+    private void shareOutput(Bitmap bitmap) {
+        String bitmapPath = MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, this.title, "Lane Detection");
+        Uri bitmapUri = Uri.parse(bitmapPath);
+
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("image/jpeg");
+        intent.putExtra(Intent.EXTRA_STREAM, bitmapUri);
+        startActivity(Intent.createChooser(intent, "Share"));
     }
 }
