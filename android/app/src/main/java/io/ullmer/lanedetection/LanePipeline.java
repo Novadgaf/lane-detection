@@ -6,13 +6,19 @@ import static org.opencv.imgproc.Imgproc.COLOR_RGB2HLS;
 import static org.opencv.imgproc.Imgproc.COLOR_RGB2Lab;
 import static org.opencv.imgproc.Imgproc.COLOR_RGB2RGBA;
 import static org.opencv.imgproc.Imgproc.THRESH_BINARY;
+import static org.opencv.imgproc.Imgproc.cornerSubPix;
 
+import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.util.Log;
 import android.util.Pair;
+
+import androidx.appcompat.content.res.AppCompatResources;
 
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import org.apache.commons.math3.fitting.PolynomialCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoints;
+import org.opencv.android.Utils;
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -25,28 +31,37 @@ import org.opencv.core.Point3;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.core.TermCriteria;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public class LanePipeline {
-    private final Mat originalImage;
+    private Mat originalImage;
 
-    private Mat cameraMtx;
-    private Mat cameraDist;
+    private Mat cameraMtx = new Mat();
+    private Mat cameraDist = new Mat();
 
     private Mat M;
     private Mat Minv;
 
     private int height;
     private int width;
+    private Context context;
 
-    public LanePipeline(Mat inputImage) {
+    public LanePipeline(Context context) throws IOException {
+        this.context = context;
+        calibrateCamera(new Size(9, 6));
+    }
+
+    public void setInputImage(Mat inputImage) {
         this.originalImage = inputImage;
-        //calibrateCamera();
+        this.height = inputImage.height();
+        this.width = inputImage.width();
     }
 
     public Mat runPipeline() {
@@ -54,8 +69,8 @@ public class LanePipeline {
         this.height = this.originalImage.height();
 
         // TODO: uncomment this to use the camera calibration
-        //Mat undistorted = undistort(originalImage);
-        Mat warped = warp(originalImage);
+        Mat undistorted = undistort(originalImage);
+        Mat warped = warp(undistorted);
 
         Mat filtered = filter(warped);
 
@@ -81,7 +96,29 @@ public class LanePipeline {
         return combined;
     }
 
-    private void calibrateCamera() {
+    private void calibrateCamera(Size chessboardSize) throws IOException {
+        int[] calibrationImages = {
+                R.drawable.calibration1,
+                R.drawable.calibration2,
+                R.drawable.calibration3,
+                R.drawable.calibration4,
+                R.drawable.calibration5,
+                R.drawable.calibration6,
+                R.drawable.calibration7,
+                R.drawable.calibration8,
+                R.drawable.calibration9,
+                R.drawable.calibration10,
+                R.drawable.calibration11,
+                R.drawable.calibration12,
+                R.drawable.calibration13,
+                R.drawable.calibration14,
+                R.drawable.calibration15,
+                R.drawable.calibration16,
+                R.drawable.calibration17,
+                R.drawable.calibration18,
+                R.drawable.calibration19,
+                R.drawable.calibration20
+        };
         TermCriteria criteria = new TermCriteria(TermCriteria.EPS | TermCriteria.MAX_ITER, 30, 0.001);
 
         // prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
@@ -93,11 +130,31 @@ public class LanePipeline {
         }
 
         // Arrays to store object points and image points from all the images.
-        List<MatOfPoint3f> objPoints = new ArrayList<>();
-        List<MatOfPoint2f> imgPoints = new ArrayList<>();
+        List<Mat> objPoints = new ArrayList<>();
+        List<Mat> imgPoints = new ArrayList<>();
+
+        Size imageSize = null;
 
         // Step through the list and search for chessboard corners
+        for (int image: calibrationImages) {
+            Mat img = Utils.loadResource(this.context, image, Imgcodecs.IMREAD_COLOR);
+            imageSize = img.size();
+            Imgproc.cvtColor(img, img, COLOR_RGB2GRAY);
 
+            MatOfPoint2f corners = new MatOfPoint2f();
+            if (Calib3d.findChessboardCorners(img, chessboardSize, corners)) {
+                objPoints.add(obj);
+                cornerSubPix(img, corners, new Size(11, 11), new Size(-1, -1), criteria);
+                imgPoints.add(corners);
+            }
+        }
+
+        // init needed variables according to OpenCV docs
+        List<Mat> rvecs = new ArrayList<>();
+        List<Mat> tvecs = new ArrayList<>();
+        cameraMtx.put(0, 0, 1);
+        cameraMtx.put(1, 1, 1);
+        Calib3d.calibrateCamera(objPoints, imgPoints, imageSize, this.cameraMtx, this.cameraDist, rvecs, tvecs);
     }
 
     private Mat undistort(Mat input) {

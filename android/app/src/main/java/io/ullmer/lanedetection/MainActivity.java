@@ -21,14 +21,20 @@ import java.io.IOException;
 public class MainActivity extends AppCompatActivity {
     private io.ullmer.lanedetection.databinding.MainActivityBinding binding;
     private Uri inputUri;
+    private LanePipeline lanePipeline;
 
     BaseLoaderCallback baseLoaderCallback= new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
-
             switch (status) {
                 case LoaderCallbackInterface.SUCCESS: {
                     Log.i("MainActivity", "onManagerConnected: OpenCV loaded");
+                    try {
+                        lanePipeline = new LanePipeline(getApplicationContext());
+                    } catch (IOException e) {
+                        Log.e("PIEPELINE", "error initializing pipeline: ", e);
+                        Toast.makeText(getApplicationContext(), "Error initializing pipeline", Toast.LENGTH_LONG).show();
+                    }
                 }
             }
         }
@@ -84,11 +90,19 @@ public class MainActivity extends AppCompatActivity {
         Mat input = new Mat();
         Utils.bitmapToMat(inputBitmap, input);
 
-        LanePipeline pipeline = new LanePipeline(input);
+        lanePipeline.setInputImage(input);
 
-        long startTime = System.currentTimeMillis();
-        Mat output = pipeline.runPipeline();
-        long difference = System.currentTimeMillis() - startTime;
+        Mat output;
+        long difference;
+        try {
+            long startTime = System.currentTimeMillis();
+            output = lanePipeline.runPipeline();
+            difference = System.currentTimeMillis() - startTime;
+        } catch (Exception e) {
+            Log.e("PIPELINE", "error running pipeline: ", e);
+            Toast.makeText(getApplicationContext(), "Error running pipeline. Please try another image!", Toast.LENGTH_LONG).show();
+            return;
+        }
 
         Bitmap outputBitmap = Bitmap.createBitmap(output.width(), output.height(),
                             Bitmap.Config.ARGB_8888);
