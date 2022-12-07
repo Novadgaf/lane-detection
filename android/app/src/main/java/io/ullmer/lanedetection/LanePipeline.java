@@ -1,19 +1,12 @@
 package io.ullmer.lanedetection;
 
-import static org.opencv.core.CvType.CV_8UC1;
 import static org.opencv.imgproc.Imgproc.COLOR_RGB2GRAY;
-import static org.opencv.imgproc.Imgproc.COLOR_RGB2HLS;
-import static org.opencv.imgproc.Imgproc.COLOR_RGB2Lab;
 import static org.opencv.imgproc.Imgproc.COLOR_RGB2RGBA;
 import static org.opencv.imgproc.Imgproc.THRESH_BINARY;
 import static org.opencv.imgproc.Imgproc.cornerSubPix;
 
 import android.content.Context;
-import android.graphics.drawable.Drawable;
-import android.util.Log;
 import android.util.Pair;
-
-import androidx.appcompat.content.res.AppCompatResources;
 
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import org.apache.commons.math3.fitting.PolynomialCurveFitter;
@@ -35,23 +28,24 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public class LanePipeline {
+    private static final DecimalFormat df = new DecimalFormat("0.00");
+
     private Mat originalImage;
 
-    private Mat cameraMtx = new Mat();
-    private Mat cameraDist = new Mat();
+    private final Mat cameraMtx = new Mat();
+    private final Mat cameraDist = new Mat();
 
-    private Mat M;
     private Mat Minv;
 
     private int height;
     private int width;
-    private Context context;
+    private final Context context;
 
     public LanePipeline(Context context) throws IOException {
         this.context = context;
@@ -86,7 +80,7 @@ public class LanePipeline {
         double krum = getKruemmung(leftCoefficients, rightCoefficients);
 
         Imgproc.putText(combined,
-                "Radius: "+ krum,
+                "Radius: "+ df.format(krum),
                 new Point(50, 50),
                 Imgproc.FONT_HERSHEY_TRIPLEX,
                 1,
@@ -182,13 +176,13 @@ public class LanePipeline {
         Mat destinationMatrix = new Mat(4, 1, CvType.CV_32FC2 );
         destinationMatrix.put(0, 0, dest );
 
-        this.M = Imgproc.getPerspectiveTransform(originalMatrix, destinationMatrix);
+        Mat M = Imgproc.getPerspectiveTransform(originalMatrix, destinationMatrix);
         originalMatrix.checkVector(2, CvType.CV_32F);
         this.Minv = Imgproc.getPerspectiveTransform(destinationMatrix, originalMatrix);
 
         // warp perspective
         Mat warped = new Mat();
-        Imgproc.warpPerspective(input, warped, this.M, size);
+        Imgproc.warpPerspective(input, warped, M, size);
         return warped;
     }
 
@@ -278,8 +272,7 @@ public class LanePipeline {
     }
 
     private double getRadius(double[] parameters) {
-        // TODO: Unterschied Python <-> Android. Was stimmt?
-        return Math.pow(1 + (2 * parameters[0] * this.height + Math.pow(parameters[1], 2)), 1.5) / Math.abs(2*parameters[0]);
+        return Math.pow((1 + Math.pow(2 * parameters[2] * this.width + parameters[1], 2)), 1.5) / Math.abs(2 * parameters[2]);
     }
 
     private double getKruemmung(double[] wLeft, double[] wRight) {

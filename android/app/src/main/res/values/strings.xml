@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name" translatable="false">LaneDetection</string>
     <string name="run_button" translatable="false">Run Pipeline!</string>
-    <string name="explaination_text" translatable="false">Tap the green square to select an input Image from the Udacity Dataset. Then press run pipeline. The result will be displayed in the blue square.</string>
+    <string name="explaination_text" translatable="false">Tap the green square to select an input Image from the Udacity Dataset. Then press run pipeline. The result will be displayed in the blue square.\nLong pressing on the output picture will save it and open a sharing window.</string>
     <string name="inputImageText" translatable="false">Input Image</string>
     <string name="outputImageText" translatable="false">Output Image</string>
 </resources>
