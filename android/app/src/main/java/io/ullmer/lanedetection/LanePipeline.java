@@ -68,7 +68,6 @@ public class LanePipeline {
         this.width = this.originalImage.width();
         this.height = this.originalImage.height();
 
-        // TODO: uncomment this to use the camera calibration
         Mat undistorted = undistort(originalImage);
         Mat warped = warp(undistorted);
 
