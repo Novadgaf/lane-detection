@@ -380,6 +380,7 @@ else:
 
  
 # Read until video is completed
+start = time.time()
 while(input_video.isOpened()):
   # Capture frame-by-frame
   ret, frame = input_video.read()
@@ -389,10 +390,8 @@ while(input_video.isOpened()):
     # covert to rgb as pipeline expects rgb
     frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
 
-    start = time.time()
     # EIGENTLICHE PIPELINE
     output = pipeline(frame)
-    print("Pipeline", time.time()-start, "\n\n\n\n\n")
 
     # convert back to bgr for saving video
     output = cv.cvtColor(output, cv.COLOR_RGB2BGR)
@@ -409,8 +408,11 @@ while(input_video.isOpened()):
     output_video.write(output)
  
     # Press Q on keyboard to  exit
-    if cv.waitKey(25) & 0xFF == ord('q'):
+    if cv.waitKey(1) & 0xFF == ord('q'):
       break
+
+    print("Pipeline", time.time()-start, "\n\n\n\n\n")
+    start = time.time()
  
   # Break the loop
   else: 
