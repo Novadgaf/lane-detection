@@ -115,58 +115,45 @@ def extract_lab_color_spaces(uwimg):
     unwarp_A = unwarped_LAB[:,:,1]
     unwarp_B = unwarped_LAB[:,:,2]
     
-    return unwarp_L, unwarp_A,unwarp_B
+    return unwarp_L, unwarp_A, unwarp_B
 
-# Extract H,S, and L color channels from HLS color space.
 def extract_hls_color_spaces(uwimg):
     unwarp_HLS = cv.cvtColor(uwimg, cv.COLOR_RGB2HLS)
     unwarp_HLS_H = unwarp_HLS[:, :, 0]
     unwarp_HLS_L = unwarp_HLS[:, :, 1]
     unwarp_HLS_S = unwarp_HLS[:, :, 2]
     
-    return unwarp_HLS_H,unwarp_HLS_L,unwarp_HLS_S
+    return unwarp_HLS_H, unwarp_HLS_L, unwarp_HLS_S
 
 # Use exclusive lower bound (>) and inclusive upper (<=)
-def hls_l_nomalize(img, thresh=(220, 255)):
-    """
-    This is used to nomalize HLS L color channel
-    """
-    # 1) Convert to HLS color space
-    _,hls_l,_ = extract_hls_color_spaces(img)
+def find_white_lines(hls, thresh=(220, 255)):
+    # unwrap color space and only use the L channel
+    _, hls_l, _ = hls
+    # scale so the lightest white is 255
     hls_l = hls_l*(255/np.max(hls_l))
-    # 2) Apply a threshold to the L channel
-    binary_output = np.zeros_like(hls_l)
-    binary_output[(hls_l > thresh[0]) & (hls_l <= thresh[1])] = 1
-    # 3) Return a binary image of threshold result
-    return binary_output
+    # set all pixels that are between the thresholds to 1
+    return np.where((hls_l > thresh[0]) & (hls_l <= thresh[1]), 1, 0)
 
-def lab_b_nomalize(unwarped_img, thresh=(190,255)):
-    """
-    This is used to LAB B color channel
-    """
-    _,_,lab_b = extract_lab_color_spaces(unwarped_img)
-    # don't normalize if there are no yellows in the image
+def find_yellow_lines(lab, thresh=(190, 255)):
+    _, _, lab_b = lab
     if np.max(lab_b) > 175:
+        # scale so the yellowest yellow is 255
         lab_b = lab_b*(255/np.max(lab_b))
-    # 2) Apply a threshold to the L channel
-    binary_output = np.zeros_like(lab_b)
-    binary_output[((lab_b > thresh[0]) & (lab_b <= thresh[1]))] = 1
-    # 3) Return a binary image of threshold result
-    return binary_output
+    # set all pixels that are between the thresholds to 1
+    return np.where((lab_b > thresh[0]) & (lab_b <= thresh[1]), 1, 0)
 
 def filter_lanes2(image):
-    # HLS L-channel Threshold (using default parameters)
-    img_hls_L = hls_l_nomalize(image)
-
-    # Lab B-channel Threshold (using default parameters)
-    img_lab_B = lab_b_nomalize(image)
+    hls = extract_hls_color_spaces(image)
+    lab = extract_lab_color_spaces(image)
     
-    # Combine HLS and Lab B channel thresholds
-    combined = np.zeros_like(img_lab_B)
-    combined[(img_hls_L == 1) | (img_lab_B == 1)] = 1
+    img_white = find_white_lines(hls)
+    img_yellow = find_yellow_lines(lab)
+    
+    # Combine HLS and Lab B channel thresholds as uint8 for filter to work
+    combined = np.where((img_white == 1) | (img_yellow == 1), 1, 0).astype('uint8')
 
     # reduce lines to 1px width
-    kernel = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]])
+    kernel = np.array([[1, 0, -1], [1, 0, -1], [1, 0, -1]])
     perwitt = cv.filter2D(combined, -1, kernel)
     threshold = cv.threshold(perwitt, 0, 255, cv.THRESH_BINARY)[1]
     
@@ -377,10 +364,13 @@ else:
   print("Video size: ", v_width, "x", v_height)
   fourcc = cv.VideoWriter_fourcc(*'X264')
   output_video = cv.VideoWriter('output.mp4', fourcc, fps, (v_width, v_height))
+  output_video.set(cv.VIDEOWRITER_PROP_HW_ACCELERATION, cv.VIDEO_ACCELERATION_ANY)
 
  
 # Read until video is completed
 start = time.time()
+time_array = np.array([])
+pipeline_array = np.array([])
 while(input_video.isOpened()):
   # Capture frame-by-frame
   ret, frame = input_video.read()
@@ -391,7 +381,10 @@ while(input_video.isOpened()):
     frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
 
     # EIGENTLICHE PIPELINE
+    pipeline_start = time.time()
     output = pipeline(frame)
+    pipeline_duration = time.time()-pipeline_start
+    pipeline_array = np.append(pipeline_array, pipeline_duration)
 
     # convert back to bgr for saving video
     output = cv.cvtColor(output, cv.COLOR_RGB2BGR)
@@ -411,7 +404,9 @@ while(input_video.isOpened()):
     if cv.waitKey(1) & 0xFF == ord('q'):
       break
 
-    print("Pipeline", time.time()-start, "\n\n\n\n\n")
+    difference = time.time()-start
+    print("Pipeline", difference, "\n\n\n\n\n")
+    time_array = np.append(time_array, difference)
     start = time.time()
  
   # Break the loop
@@ -425,3 +420,6 @@ output_video.release()
 # Closes all the frames
 cv.destroyAllWindows()
 cv.waitKey(1)
+
+print("Average time from frame to frame (including video reading/display/writing): ", np.average(time_array))
+print("Average time for image processing (excluding the above): ", np.average(pipeline_array))
