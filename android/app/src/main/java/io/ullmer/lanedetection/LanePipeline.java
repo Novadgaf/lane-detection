@@ -47,17 +47,32 @@ public class LanePipeline {
     private int width;
     private final Context context;
 
+    /**
+     * Initialize the Lane pipeline with a context.
+     * Runs the camera calibration
+     * @param context the android context (used for toast messages)
+     *
+     * @throws IOException when calibration images are not found
+     */
     public LanePipeline(Context context) throws IOException {
         this.context = context;
         calibrateCamera(new Size(9, 6));
     }
 
+    /**
+     * Sets the input image for the pipeline.
+     * @param inputImage the input image in OpenCV Mat format
+     */
     public void setInputImage(Mat inputImage) {
         this.originalImage = inputImage;
         this.height = inputImage.height();
         this.width = inputImage.width();
     }
 
+    /**
+     * Runs the pipeline and returns the output image.
+     * @return output image with detected lanes in OpenCV Mat format
+     */
     public Mat runPipeline() {
         this.width = this.originalImage.width();
         this.height = this.originalImage.height();
@@ -89,6 +104,11 @@ public class LanePipeline {
         return combined;
     }
 
+    /**
+     * Calibrates the camera using the calibration images in the assets folder.
+     * @param chessboardSize the size of the chessboard used for calibration
+     * @throws IOException when calibration images are not found
+     */
     private void calibrateCamera(Size chessboardSize) throws IOException {
         int[] calibrationImages = {
                 R.drawable.calibration1,
@@ -150,12 +170,22 @@ public class LanePipeline {
         Calib3d.calibrateCamera(objPoints, imgPoints, imageSize, this.cameraMtx, this.cameraDist, rvecs, tvecs);
     }
 
+    /**
+     * Undistorts the image using the camera calibration.
+     * @param input the input image in OpenCV Mat format
+     * @return the undistorted image in OpenCV Mat format
+     */
     private Mat undistort(Mat input) {
         Mat output = new Mat();
         Calib3d.undistort(input, output, this.cameraMtx, this.cameraDist, this.cameraMtx);
         return output;
     }
 
+    /**
+     * warps the image to a top-down view
+     * @param input the input image in OpenCV Mat format
+     * @return the warped image in OpenCV Mat format
+     */
     private Mat warp(Mat input) {
         Size size = input.size();
         int offset = 200;
@@ -186,6 +216,11 @@ public class LanePipeline {
         return warped;
     }
 
+    /**
+     * Filters the image to only show the lane lines 1px wide
+     * @param input the input image in OpenCV Mat format
+     * @return the filtered image in OpenCV Mat format
+     */
     private Mat filter(Mat input) {
         Mat hls = convert2Hls(input);
         Mat lab = convert2Lab(input);
@@ -211,6 +246,12 @@ public class LanePipeline {
         return output;
     }
 
+    /**
+     * Finds the white pixels in the image and returns the x and y coordinates of the pixels
+     * This also filters for left and right lane lines
+     * @param input the filtered input image in OpenCV Mat format
+     * @return first element are the x and y coordinates of the left lane line, second element are the x and y coordinates of the right lane line
+     */
     private Pair<WeightedObservedPoints, WeightedObservedPoints> findLanePoints(Mat input) {
         final WeightedObservedPoints leftPoints = new WeightedObservedPoints();
         final WeightedObservedPoints rightPoints = new WeightedObservedPoints();
@@ -231,6 +272,11 @@ public class LanePipeline {
         return new Pair<>(leftPoints, rightPoints);
     }
 
+    /**
+     * fits a 2nd order polynomial on the given points
+     * @param points the points to fit the polynomial on
+     * @return the coefficients of the polynomial
+     */
     private double[] fitPolynomial(WeightedObservedPoints points) {
         final PolynomialCurveFitter fitter = PolynomialCurveFitter.create(2);
 
@@ -238,6 +284,14 @@ public class LanePipeline {
         return fitter.fit(points.toList());
     }
 
+    /**
+     * Draws lane lines on a blank image
+     * @param height the height of the image to draw
+     * @param width the width of the image to draw
+     * @param wLeft the coefficients of the left lane line
+     * @param wRight the coefficients of the right lane line
+     * @return the image with the lane lines drawn
+     */
     private Mat drawLanes(int height, int width, double[] wLeft, double[] wRight) {
         Mat image = new Mat(height, width, CvType.CV_8UC3);
         PolynomialFunction leftFunction = new PolynomialFunction(wLeft);
@@ -271,22 +325,45 @@ public class LanePipeline {
         return image;
     }
 
+    /**
+     * Calculates the radius of the curvature of a single lane line
+     * @param parameters the coefficients of the polynomial
+     * @return the radius of the curvature
+     */
     private double getRadius(double[] parameters) {
         return Math.pow((1 + Math.pow(2 * parameters[2] * this.width + parameters[1], 2)), 1.5) / Math.abs(2 * parameters[2]);
     }
 
+    /**
+     * Calculates the radius of the curvature of the lane
+     * @param wLeft the coefficients of the left lane line
+     * @param wRight the coefficients of the right lane line
+     * @return the radius of the lane
+     */
     private double getKruemmung(double[] wLeft, double[] wRight) {
         double left = getRadius(wLeft);
         double right = getRadius(wRight);
         return (left + right) / 2;
     }
 
+    /**
+     * Unwarps the image back to the original perspective
+     * @param input the input image in OpenCV Mat format
+     * @return the unwarped image in OpenCV Mat format
+     */
     private Mat unwarp(Mat input) {
         Mat output = new Mat();
         Imgproc.warpPerspective(input, output, this.Minv, input.size());
         return output;
     }
 
+    /**
+     * Overlays two images on top of each other.
+     * This is used to draw the lane lines on the original image
+     * @param original the original image
+     * @param overlay the image to overlay on top of the original image
+     * @return the original image with the overlay image on top of it
+     */
     private Mat overlay(Mat original, Mat overlay) {
         double opacity = 0.5f;
 
@@ -295,12 +372,22 @@ public class LanePipeline {
         return result;
     }
 
+    /**
+     * Converts the image to Lab color space
+     * @param input the input image in OpenCV Mat format in RGB
+     * @return the image in Lab color space
+     */
     private Mat convert2Lab(Mat input) {
         Mat labImage = new Mat();
         Imgproc.cvtColor(input, labImage, Imgproc.COLOR_RGB2Lab);
         return labImage;
     }
 
+    /**
+     * Converts the image to HLS color space
+     * @param input the input image in OpenCV Mat format in RGB
+     * @return the image in HLS color space
+     */
     private Mat convert2Hls(Mat input) {
         Mat hlsImage = new Mat();
         Imgproc.cvtColor(input, hlsImage, Imgproc.COLOR_RGB2HLS);

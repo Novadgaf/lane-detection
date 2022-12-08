@@ -5,19 +5,12 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 
-import com.google.android.material.snackbar.Snackbar;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.provider.MediaStore;
 import android.util.Log;
-import android.view.View;
 import android.widget.Toast;
-
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
-import androidx.navigation.ui.AppBarConfiguration;
-import androidx.navigation.ui.NavigationUI;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
@@ -109,6 +102,10 @@ public class BeautifulActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Run the lane detection pipeline on the given bitmap
+     * @param bild the input bitmap
+     */
     private void runPipeline(Bitmap bild) {
         Bitmap inputBitmap = bild.copy(Bitmap.Config.ARGB_8888, true);
 
@@ -146,6 +143,11 @@ public class BeautifulActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * Converts a Uri to a Bitmap
+     * @param imageUri the Uri to the bitmap
+     * @return the Bitmap
+     */
     private Bitmap uriToBitmap(Uri imageUri) {
         try {
             this.title = imageUri.getLastPathSegment();
@@ -156,6 +158,10 @@ public class BeautifulActivity extends AppCompatActivity {
         return null;
     }
 
+    /**
+     * Saves a Bitmap to the gallery and opens the share sheet for this image
+     * @param bitmap the Bitmap to save and share
+     */
     private void shareOutput(Bitmap bitmap) {
         String bitmapPath = MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, this.title, "Lane Detection");
         Uri bitmapUri = Uri.parse(bitmapPath);

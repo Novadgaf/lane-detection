@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"io.ullmer.lanedetection"},{"l":"io.ullmer.lanedetection.databinding"}]
