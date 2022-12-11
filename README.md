@@ -1,6 +1,6 @@
 # Lane Detection
 ## Projekt zur Spurerkennung im Kurs "Digitale Bildverarbeitung"
-In diesem Projekt sollen Spurmarkierungen in verschiedener Datensätze erkannt werden.
+In diesem Projekt sollen Spurmarkierungen verschiedener Datensätze erkannt werden.
 
 Grundlegende Spurerkennung in _Projekt_Spurerkennung_v2.ipynb_
 
