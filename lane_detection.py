@@ -422,4 +422,6 @@ cv.destroyAllWindows()
 cv.waitKey(1)
 
 print("Average time from frame to frame (including video reading/display/writing): ", np.average(time_array))
+print("=> Average FPS: " + str(1/np.average(time_array)))
 print("Average time for image processing (excluding the above): ", np.average(pipeline_array))
+print("=> Average FPS: " + str(1/np.average(pipeline_array)))
