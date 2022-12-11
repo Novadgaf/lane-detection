@@ -1,0 +1,1 @@
+typeSearchIndex = [{"p":"io.ullmer.lanedetection.databinding","l":"ActivityBeautifulBinding"},{"l":"All Classes","url":"allclasses-index.html"},{"p":"io.ullmer.lanedetection","l":"BeautifulActivity"},{"p":"io.ullmer.lanedetection","l":"BuildConfig"},{"p":"io.ullmer.lanedetection","l":"LanePipeline"}]
