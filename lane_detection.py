@@ -142,7 +142,7 @@ def find_yellow_lines(lab, thresh=(190, 255)):
     # set all pixels that are between the thresholds to 1
     return np.where((lab_b > thresh[0]) & (lab_b <= thresh[1]), 1, 0)
 
-def filter_lanes2(image):
+def filter_lanes(image):
     hls = extract_hls_color_spaces(image)
     lab = extract_lab_color_spaces(image)
     
@@ -295,7 +295,7 @@ def pipeline(image, show_debug=False):
     last = time.time()
 
     # Filter lanes
-    filtered = filter_lanes2(warped)
+    filtered = filter_lanes(warped)
     if show_debug:
         plt.imshow(filtered, cmap='gray')
         plt.title("Filtered image")
